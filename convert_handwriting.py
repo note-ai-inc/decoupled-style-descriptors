@@ -74,8 +74,20 @@ class HandwritingConverter:
         
         # Create stroke data
         stroke_data = np.column_stack((points, pen_states))
-        stroke_data_in = np.column_stack((normalized_points[:-1], pen_states[:-1]))
-        stroke_data_out = np.column_stack((normalized_points[1:], pen_states[1:]))
+        # Ensure stroke_data_in and stroke_data_out have the same length as stroke_data
+        if len(normalized_points) > 0:
+            # For stroke_data_in, duplicate the first point
+            stroke_data_in = np.column_stack((normalized_points, pen_states))
+            
+            # For stroke_data_out, duplicate the last point
+            last_point = normalized_points[-1]
+            last_pen = pen_states[-1]
+            out_points = np.vstack([normalized_points[1:], last_point])
+            out_pens = np.array(pen_states[1:] + [last_pen])
+            stroke_data_out = np.column_stack((out_points, out_pens))
+        else:
+            stroke_data_in = stroke_data.copy()
+            stroke_data_out = stroke_data.copy()
         # Convert text to character indices
         text_chars = list(text.lower()) if text else ['']
         char_indices = [self.char_to_idx.get(c, 0) for c in text_chars]
@@ -98,8 +110,8 @@ class HandwritingConverter:
         # Create the data structure according to the format
         data = np.array([
             stroke_data,  # sentence_level_raw_stroke
-            stroke_data,  # sentence_level_stroke_in
-            stroke_data,  # sentence_level_stroke_out
+            stroke_data_in,  # sentence_level_stroke_in
+            stroke_data_out,  # sentence_level_stroke_out
             term_data,    # sentence_level_term
             char_data,    # sentence_level_char
             
@@ -110,8 +122,8 @@ class HandwritingConverter:
             [char_data],    # word_level_char
             
             [[stroke_data]],  # segment_level_raw_stroke
-            [[stroke_data]],  # segment_level_stroke_in
-            [[stroke_data]],  # segment_level_stroke_out
+            [[stroke_data_in]],  # segment_level_stroke_in
+            [[stroke_data_out]],  # segment_level_stroke_out
             [[term_data]],    # segment_level_term
             [[char_data]],    # segment_level_char
             
