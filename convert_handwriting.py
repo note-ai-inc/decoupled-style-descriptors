@@ -224,46 +224,28 @@ class HandwritingConverter:
             for i, stroke in enumerate(strokes):
                 if not stroke:
                     continue
-                    
-                # Add pen up point at the start of each new stroke (except the first one)
-                if i > 0 and points:
-                    # Add a pen up point at the last position of previous stroke
-                    points.append(points[-1])
-                    pen_states.append(False)  # Pen up
-                    # Add a pen up point at the first position of current stroke
-                    points.append((float(stroke[0][0]), float(stroke[0][1])))
-                    pen_states.append(False)  # Pen up
                 
-                # Add first point of the stroke
+                # For the first point in the stroke
                 points.append((float(stroke[0][0]), float(stroke[0][1])))
-                pen_states.append(True)  # Pen down for first point
+                pen_states.append(1)  # Pen down for the entire stroke
                 
                 # Process remaining points in the stroke
                 for j in range(1, len(stroke)):
                     x, y = stroke[j]
-                    prev_x, prev_y = stroke[j-1]
-                    
-                    # Calculate distance from previous point
-                    dist = np.sqrt((x - prev_x)**2 + (y - prev_y)**2)
-                    
-                    # If distance is very large, consider it a pen up event
-                    if dist > 30:  # Threshold for pen up
-                        # Add pen up point at previous location
-                        points.append((float(prev_x), float(prev_y)))
-                        pen_states.append(False)  # Pen up
-                        
-                        # Add pen down point at new location
-                        points.append((float(x), float(y)))
-                        pen_states.append(True)  # Pen down
-                    else:
-                        # Regular point
-                        points.append((float(x), float(y)))
-                        pen_states.append(True)  # Pen down
+                    points.append((float(x), float(y)))
+                    pen_states.append(1)  # Keep pen down for all points in the stroke
                 
-                # Add pen up point at the end of each stroke
-                if points:
-                    points.append(points[-1])
-                    pen_states.append(False)  # Pen up
+                # Add a single pen up point at the end of the stroke
+                if i < len(strokes) - 1:
+                    # Add the last point of current stroke with pen up
+                    points.append((float(stroke[-1][0]), float(stroke[-1][1])))
+                    pen_states.append(0)  # Pen up between strokes
+                    
+                    # Add the first point of next stroke with pen up
+                    next_stroke = strokes[i + 1]
+                    if next_stroke:
+                        points.append((float(next_stroke[0][0]), float(next_stroke[0][1])))
+                        pen_states.append(0)  # Pen up between strokes
             
             if not points:
                 raise ValueError(f"No valid points found in {json_path}")
