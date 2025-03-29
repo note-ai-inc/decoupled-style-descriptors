@@ -32,7 +32,7 @@ class HandwritingCapture:
         # Handle drawing
         if event == cv2.EVENT_LBUTTONDOWN:
             self.drawing = True
-            self.current_stroke = [(x, y)]
+            self.current_stroke = [(x, y, 0)]  # pen_state = 0 for stroke points
             self.last_point = (x, y)
             
         elif event == cv2.EVENT_MOUSEMOVE and self.drawing:
@@ -42,11 +42,13 @@ class HandwritingCapture:
             # If distance is too large, start a new stroke
             if dist > self.threshold:
                 if self.current_stroke:
+                    # Add pen up point at the end of current stroke
+                    self.current_stroke.append((self.current_stroke[-1][0], self.current_stroke[-1][1], 1))
                     self.strokes.append(self.current_stroke)
-                self.current_stroke = [(x, y)]
+                self.current_stroke = [(x, y, 0)]  # pen_state = 0 for new stroke
                 self.last_point = (x, y)
             else:
-                self.current_stroke.append((x, y))
+                self.current_stroke.append((x, y, 0))  # pen_state = 0 for stroke points
                 self.last_point = (x, y)
             
             # Update display
@@ -57,6 +59,8 @@ class HandwritingCapture:
         elif event == cv2.EVENT_LBUTTONUP:
             self.drawing = False
             if self.current_stroke:
+                # Add pen up point at the end of current stroke
+                self.current_stroke.append((self.current_stroke[-1][0], self.current_stroke[-1][1], 1))
                 self.strokes.append(self.current_stroke)
                 self.current_stroke = []
             self.last_point = None
@@ -71,18 +75,22 @@ class HandwritingCapture:
         for stroke in self.strokes:
             if len(stroke) > 1:
                 for i in range(len(stroke) - 1):
-                    cv2.line(img, 
-                            (stroke[i][0], stroke[i][1]),
-                            (stroke[i + 1][0], stroke[i + 1][1]), 
-                            (0, 0, 0), 2)
+                    # Only draw lines between points where pen is down (pen_state = 0)
+                    if stroke[i][2] == 0 and stroke[i+1][2] == 0:
+                        cv2.line(img, 
+                                (stroke[i][0], stroke[i][1]),
+                                (stroke[i + 1][0], stroke[i + 1][1]), 
+                                (0, 0, 0), 2)
         
         # Draw current stroke
         if len(self.current_stroke) > 1:
             for i in range(len(self.current_stroke) - 1):
-                cv2.line(img,
-                        (self.current_stroke[i][0], self.current_stroke[i][1]),
-                        (self.current_stroke[i + 1][0], self.current_stroke[i + 1][1]),
-                        (0, 0, 0), 2)
+                # Only draw lines between points where pen is down (pen_state = 0)
+                if self.current_stroke[i][2] == 0 and self.current_stroke[i+1][2] == 0:
+                    cv2.line(img,
+                            (self.current_stroke[i][0], self.current_stroke[i][1]),
+                            (self.current_stroke[i + 1][0], self.current_stroke[i + 1][1]),
+                            (0, 0, 0), 2)
     
     def save_strokes(self, text):
         """Save the captured strokes and text to a JSON file."""

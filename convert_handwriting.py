@@ -73,8 +73,9 @@ class HandwritingConverter:
         normalized_points = self.normalize_coordinates(points)
         
         # Create stroke data
-        stroke_data = np.column_stack((normalized_points, pen_states))
-        
+        stroke_data = np.column_stack((points, pen_states))
+        stroke_data_in = np.column_stack((normalized_points[:-1], pen_states[:-1]))
+        stroke_data_out = np.column_stack((normalized_points[1:], pen_states[1:]))
         # Convert text to character indices
         text_chars = list(text.lower()) if text else ['']
         char_indices = [self.char_to_idx.get(c, 0) for c in text_chars]
@@ -103,8 +104,8 @@ class HandwritingConverter:
             char_data,    # sentence_level_char
             
             [stroke_data],  # word_level_raw_stroke
-            [stroke_data],  # word_level_stroke_in
-            [stroke_data],  # word_level_stroke_out
+            [stroke_data_in],  # word_level_stroke_in
+            [stroke_data_out],  # word_level_stroke_out
             [term_data],    # word_level_term
             [char_data],    # word_level_char
             
@@ -226,31 +227,15 @@ class HandwritingConverter:
             pen_states = []
             
             # Process each stroke
-            for i, stroke in enumerate(strokes):
+            for stroke in strokes:
                 if not stroke:
                     continue
                 
-                # For the first point in the stroke
-                points.append((float(stroke[0][0]), float(stroke[0][1])))
-                pen_states.append(0)  # Pen down (0) for the entire stroke
-                
-                # Process remaining points in the stroke
-                for j in range(1, len(stroke)):
-                    x, y = stroke[j]
+                # Process all points in the stroke, including pen states
+                for point in stroke:
+                    x, y, pen_state = point
                     points.append((float(x), float(y)))
-                    pen_states.append(0)  # Keep pen down (0) for all points in the stroke
-                
-                # Add transition points between strokes
-                if i < len(strokes) - 1:
-                    next_stroke = strokes[i + 1]
-                    if next_stroke:
-                        # Add pen up point at the end of current stroke
-                        points.append((float(stroke[-1][0]), float(stroke[-1][1])))
-                        pen_states.append(1)  # Pen up (1)
-                        
-                        # Add pen down point at the start of next stroke
-                        points.append((float(next_stroke[0][0]), float(next_stroke[0][1])))
-                        pen_states.append(0)  # Pen down (0)
+                    pen_states.append(pen_state)  # Use pen state directly from data
             
             if not points:
                 raise ValueError(f"No valid points found in {json_path}")
