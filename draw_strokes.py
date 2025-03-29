@@ -7,69 +7,29 @@ def draw_strokes(stroke_data, output_path, width=750, height=160):
     Draw handwriting strokes from stroke data.
     
     Args:
-        stroke_data: list containing stroke data arrays and other information
+        stroke_data: numpy array or list containing stroke data with shape (N, 3)
         output_path: path to save the output image
         width: width of the output image
         height: height of the output image
     """
+    # Convert list to numpy array if needed
+    if isinstance(stroke_data, list):
+        stroke_data = np.array(stroke_data)
+    
     # Debug information
-    print("Data array length:", len(stroke_data))
-    print("\nDetailed data structure:")
-    for i, element in enumerate(stroke_data):
-        print(f"\nElement {i}:")
-        print(f"Type: {type(element)}")
-        if isinstance(element, np.ndarray):
-            print(f"Shape: {element.shape}")
-            print(f"Content: {element}")  # Print first 5 elements
-        elif isinstance(element, list):
-            print(f"Length: {len(element)}")
-            print(f"Content: {element}")  # Print first 5 elements
-        else:
-            print(f"Value: {element}")
-    
-    # Find all stroke arrays in the data
-    stroke_arrays = []
-    for element in stroke_data:
-        if isinstance(element, list):
-            # Check if this is a list of coordinates (each element should be a list of length 3)
-            if len(element) == 3 and all(isinstance(x, (int, float)) for x in element):
-                stroke_arrays.append(element)
-            else:
-                # Check nested lists
-                for subelement in element:
-                    if isinstance(subelement, list) and len(subelement) == 3:
-                        stroke_arrays.append(subelement)
-                    elif isinstance(subelement, np.ndarray) and len(subelement.shape) == 2 and subelement.shape[1] == 3:
-                        stroke_arrays.append(subelement)
-        elif isinstance(element, np.ndarray):
-            if len(element.shape) == 2 and element.shape[1] == 3:
-                stroke_arrays.append(element)
-    
-    if not stroke_arrays:
-        print("No valid stroke data found!")
-        return
-    
-    # Convert lists to numpy arrays and combine them
-    stroke_arrays = [np.array(arr) if isinstance(arr, list) else arr for arr in stroke_arrays]
-    
-    # Combine all stroke arrays
-    combined_strokes = np.stack(stroke_arrays, axis=0)
-    print(f"\nCombined strokes shape: {combined_strokes.shape}")
-    print(f"X range: {np.min(combined_strokes[:, 0])} to {np.max(combined_strokes[:, 0])}")
-    print(f"Y range: {np.min(combined_strokes[:, 1])} to {np.max(combined_strokes[:, 1])}")
-    print(f"Pen states: {np.unique(combined_strokes[:, 2])}")
-    
-    # Reverse the order of strokes to display in correct order
-    combined_strokes = combined_strokes[::-1]
+    print(f"\nStroke data shape: {stroke_data.shape}")
+    print(f"X range: {np.min(stroke_data[:, 0])} to {np.max(stroke_data[:, 0])}")
+    print(f"Y range: {np.min(stroke_data[:, 1])} to {np.max(stroke_data[:, 1])}")
+    print(f"Pen states: {np.unique(stroke_data[:, 2])}")
     
     # Create a new image with white background
     img = Image.new('RGB', (width, height), 'white')
     draw = ImageDraw.Draw(img)
     
     # Scale coordinates to fit the image
-    x_coords = combined_strokes[:, 0]
-    y_coords = combined_strokes[:, 1]
-    pen_states = combined_strokes[:, 2]
+    x_coords = stroke_data[:, 0]
+    y_coords = stroke_data[:, 1]
+    pen_states = stroke_data[:, 2]
     
     # Add padding
     padding = 40
@@ -95,7 +55,7 @@ def draw_strokes(stroke_data, output_path, width=750, height=160):
     strokes = []
     current_stroke = []
     
-    for i in range(len(combined_strokes)):
+    for i in range(len(stroke_data)):
         x, y = x_coords[i], y_coords[i]
         pen_state = pen_states[i]
         
@@ -144,10 +104,6 @@ def visualize_handwriting(npy_path, output_path):
     """
     # Load the data
     data = np.load(npy_path, allow_pickle=True)
-    
-    # Debug information
-    print("\nData array length:", len(data))
-    print("Data types:", [type(x) for x in data])
     
     # Extract stroke data (first element contains sentence-level raw stroke data)
     stroke_data = data[0]
