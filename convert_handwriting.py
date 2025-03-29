@@ -23,8 +23,8 @@ class HandwritingConverter:
             '6': 65, '7': 66, '8': 67, '9': 68, '\n': 69
         }
         
-    def create_writer_directory(self, writer_id: int):
-        """Create a directory for the writer if it doesn't exist."""
+    def create_writer_directory(self, writer_id: int) -> str:
+        """Create directory for a writer if it doesn't exist."""
         writer_dir = os.path.join(self.output_dir, str(writer_id))
         os.makedirs(writer_dir, exist_ok=True)
         return writer_dir
@@ -59,22 +59,25 @@ class HandwritingConverter:
         stroke_data[:, 2] = np.array([1.0 if state else 0.0 for state in pen_states])
         return stroke_data
 
-    def process_handwriting_data(self, 
-                               points: List[Tuple[float, float]], 
-                               pen_states: List[bool],
+    def process_handwriting_data(self,
+                               points: List[Tuple[float, float]],
+                               pen_states: List[int],
                                text: str,
                                writer_id: int,
                                sample_id: int = 0) -> None:
-        """Process handwriting data and save it in the required format."""
+        """Process handwriting data and save to NPY file."""
+        # Create writer directory
+        writer_dir = self.create_writer_directory(writer_id)
+        
         # Normalize coordinates
         normalized_points = self.normalize_coordinates(points)
         
         # Create stroke data
-        stroke_data = self.create_stroke_data(normalized_points, pen_states)
+        stroke_data = np.column_stack((normalized_points, pen_states))
         
-        # Convert text to list of characters and then to indices
-        text_chars = list(text) if text else ['']
-        char_indices = [self.char_to_idx.get(c.lower(), 0) for c in text_chars]
+        # Convert text to character indices
+        text_chars = list(text.lower()) if text else ['']
+        char_indices = [self.char_to_idx.get(c, 0) for c in text_chars]
         
         # Create term data (all ones)
         term_data = np.ones(len(points))
@@ -114,11 +117,13 @@ class HandwritingConverter:
             {}  # metadata
         ], dtype=object)
         
-        # Create writer directory and save data
-        writer_dir = self.create_writer_directory(writer_id)
-        output_path = os.path.join(writer_dir, f'{sample_id}.npy')
+        # Save to NPY file
+        output_path = os.path.join(writer_dir, f"{sample_id}.npy")
         np.save(output_path, data, allow_pickle=True)
-        print(f"Saved handwriting data to {output_path}")
+        
+        print(f"Saved stroke data to {output_path}")
+        print(f"Shape: {stroke_data.shape}")
+        print(f"Text: {text}")
 
     def process_image(self, 
                      image_path: str,
@@ -227,25 +232,25 @@ class HandwritingConverter:
                 
                 # For the first point in the stroke
                 points.append((float(stroke[0][0]), float(stroke[0][1])))
-                pen_states.append(1)  # Pen down for the entire stroke
+                pen_states.append(0)  # Pen down (0) for the entire stroke
                 
                 # Process remaining points in the stroke
                 for j in range(1, len(stroke)):
                     x, y = stroke[j]
                     points.append((float(x), float(y)))
-                    pen_states.append(1)  # Keep pen down for all points in the stroke
+                    pen_states.append(0)  # Keep pen down (0) for all points in the stroke
                 
-                # Add a single pen up point at the end of the stroke
+                # Add transition points between strokes
                 if i < len(strokes) - 1:
-                    # Add the last point of current stroke with pen up
-                    points.append((float(stroke[-1][0]), float(stroke[-1][1])))
-                    pen_states.append(0)  # Pen up between strokes
-                    
-                    # Add the first point of next stroke with pen up
                     next_stroke = strokes[i + 1]
                     if next_stroke:
+                        # Add pen up point at the end of current stroke
+                        points.append((float(stroke[-1][0]), float(stroke[-1][1])))
+                        pen_states.append(1)  # Pen up (1)
+                        
+                        # Add pen down point at the start of next stroke
                         points.append((float(next_stroke[0][0]), float(next_stroke[0][1])))
-                        pen_states.append(0)  # Pen up between strokes
+                        pen_states.append(0)  # Pen down (0)
             
             if not points:
                 raise ValueError(f"No valid points found in {json_path}")
