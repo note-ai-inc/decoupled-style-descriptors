@@ -5,23 +5,12 @@ from PIL import Image
 import cv2
 from typing import List, Tuple, Dict, Any
 import argparse
+from config.GlobalVariables import CHARACTERS
 
 class HandwritingConverter:
     def __init__(self, output_dir: str = './data/writers'):
         self.output_dir = output_dir
         self.divider = 5.0  # Normalization factor for coordinates
-        # Character to index mapping
-        self.char_to_idx = {
-            ' ': 0, 'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'h': 8,
-            'i': 9, 'j': 10, 'k': 11, 'l': 12, 'm': 13, 'n': 14, 'o': 15, 'p': 16,
-            'q': 17, 'r': 18, 's': 19, 't': 20, 'u': 21, 'v': 22, 'w': 23, 'x': 24,
-            'y': 25, 'z': 26, '.': 27, ',': 28, "'": 29, '!': 30, '?': 31, '(': 32,
-            ')': 33, '&': 34, '-': 35, '/': 36, '\\': 37, ':': 38, ';': 39, '$': 40,
-            '#': 41, '~': 42, '@': 43, '*': 44, '^': 45, '_': 46, '%': 47, '+': 48,
-            '=': 49, '{': 50, '}': 51, '[': 52, ']': 53, '"': 54, '<': 55, '>': 56,
-            '|': 57, '`': 58, '0': 59, '1': 60, '2': 61, '3': 62, '4': 63, '5': 64,
-            '6': 65, '7': 66, '8': 67, '9': 68, '\n': 69
-        }
         
     def create_writer_directory(self, writer_id: int) -> str:
         """Create directory for a writer if it doesn't exist."""
@@ -88,9 +77,10 @@ class HandwritingConverter:
         else:
             stroke_data_in = stroke_data.copy()
             stroke_data_out = stroke_data.copy()
-        # Convert text to character indices
-        text_chars = list(text.lower()) if text else ['']
-        char_indices = [self.char_to_idx.get(c, 0) for c in text_chars]
+        
+        # Convert text to character indices using GlobalVariables.CHARACTERS
+        text_chars = list(text.lower())
+        char_indices = [CHARACTERS.index(c) if c in CHARACTERS else CHARACTERS.index(' ') for c in text_chars]
         
         # Create term data (all ones)
         term_data = np.ones(len(points))
@@ -253,7 +243,8 @@ class HandwritingConverter:
                 raise ValueError(f"No valid points found in {json_path}")
             
             # Process the data
-            self.process_handwriting_data(points, pen_states, text, writer_id, sample_id)
+            if(len(points) > 0 and len(text)> 0):
+                self.process_handwriting_data(points, pen_states, text, writer_id, sample_id)
             
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON file {json_path}: {str(e)}")
