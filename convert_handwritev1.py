@@ -28,8 +28,8 @@ def process_json_file(json_path, writer_id, sample_id, resample):
     # Convert strokes to numpy array
     points = []
     for stroke in strokes:
-        points.extend([[float(x), float(y)] for x, y in stroke])
-    # raw_points = np.array(points)
+        points.extend([[float(x), float(y), float(p)] for x, y, p in stroke])
+    points = np.asarray(points)  # Convert list to numpy array
     
     process_dataset(data_dir, writer_id, sample_id, text, points, character_labels, preprocess_dir, 1)
     
@@ -62,9 +62,8 @@ def main():
         print(f"Processing {json_file}...")
         
         # Process file and save in expected format
-        output_path = process_json_file(json_path, writer_id=0, sample_id=i, resample=args.resample)
+        output_path = process_json_file(json_path, writer_id=args.writer_id, sample_id=i, resample=args.resample)
         print(f"Saved to {output_path}")
-    
     
     print("Processing complete!")
 

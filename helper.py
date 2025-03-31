@@ -7,20 +7,20 @@ from PIL import Image, ImageDraw
 import os
 import pickle
 
-def preprocess_dataset(data_dir, resample=20, pred_start=1):
-    def reformat_raw_data(raw_data, pred_start):
-        if pred_start == 1:
-            tmp = np.concatenate([[[0, 500, 0]], raw_data], 0)
-            tmp = tmp[1:] - tmp[:-1]
-            tmp[1:, 2] = raw_data[:-1, 2]
-            tmp = np.concatenate([[[0, 0, 0]], tmp], 0)
-        else:
-            tmp = np.concatenate([raw_data[0:1], raw_data])
-            tmp = tmp[1:] - tmp[:-1]
-            tmp[0,2] = 0
-            tmp[1:,2] = raw_data[:-1, 2]
-        return tmp[:-1], tmp[1:]
+def reformat_raw_data(raw_data, pred_start):
+    if pred_start == 1:
+        tmp = np.concatenate([[[0, 500, 0]], raw_data], 0)
+        tmp = tmp[1:] - tmp[:-1]
+        tmp[1:, 2] = raw_data[:-1, 2]
+        tmp = np.concatenate([[[0, 0, 0]], tmp], 0)
+    else:
+        tmp = np.concatenate([raw_data[0:1], raw_data])
+        tmp = tmp[1:] - tmp[:-1]
+        tmp[0,2] = 0
+        tmp[1:,2] = raw_data[:-1, 2]
+    return tmp[:-1], tmp[1:]
 
+def preprocess_dataset(data_dir, resample=20, pred_start=1):
     prohibits = [f'./BRUSH/5/118_resample{resample}', f'./BRUSH/7/14_resample{resample}',
                  f'./BRUSH/7/101_resample{resample}', f'./BRUSH/7/58_resample{resample}',
                  f'./BRUSH/14/20_resample{resample}', f'./BRUSH/22/45_resample{resample}',
@@ -38,126 +38,175 @@ def preprocess_dataset(data_dir, resample=20, pred_start=1):
         for sentence_id in [i for i in os.listdir(f'{data_dir}/{writer_id}') if i[-3:] == f'e{resample}']:
             with open(f'{data_dir}/{writer_id}/{sentence_id}', 'rb') as f:
                 [sentence_text, raw_points, character_labels] = pickle.load(f)
+
             if f'{data_dir}/{writer_id}/{sentence_id}' not in prohibits:
-                sentence_raw_points = raw_points
-                sentence_raw_points[:, 0] -= sentence_raw_points[0, 0]
-                sentence_stroke_in, sentence_stroke_out = reformat_raw_data(sentence_raw_points, pred_start=pred_start)
+                process_dataset(data_dir, writer_id, sentence_id, sentence_text, raw_points, character_labels, preprocess_dir, pred_start)
 
-                split_char_ids = [i for i, c in enumerate(sentence_text) if c == ' ']
+def process_dataset(data_dir, writer_id, sentence_id, sentence_text, raw_points, character_labels, preprocess_dir, pred_start=1):
+    sentence_raw_points = raw_points
+    sentence_raw_points[:, 0] -= sentence_raw_points[0, 0]
+    sentence_stroke_in, sentence_stroke_out = reformat_raw_data(sentence_raw_points, pred_start=pred_start)
 
-                sentence_char = [CHARACTERS.find(c) for c in sentence_text]
+    split_char_ids = [i for i, c in enumerate(sentence_text) if c == ' ']
 
-                sentence_term = []
-                cid = 0
-                for i in range(len(character_labels) - 1):
-                    if character_labels[i + 1, cid] != 1:
-                        if np.argmax(character_labels[i + 1]) >= cid:
-                            cid += 1
-                            sentence_term.append(1)
-                        else:
-                            sentence_term.append(0)
-                    else:
-                        sentence_term.append(0)
+    sentence_char = [CHARACTERS.find(c) for c in sentence_text]
+    # Create sentence_level_char array with same length as raw_points
+    # Each element contains the index of the corresponding character in CHARACTERS
+    sentence_level_char = np.zeros(len(raw_points), dtype=int)
+    
+    # Iterate through character labels to assign character indices
+    for i in range(len(character_labels)):
+        # Find which character this point belongs to
+        char_idx = np.argmax(character_labels[i])
+        if char_idx < len(sentence_char):
+            # Assign the character index from CHARACTERS
+            sentence_level_char[i] = sentence_char[char_idx]
+
+
+    sentence_term = []
+    cid = 0
+    for i in range(len(character_labels) - 1):
+        if character_labels[i + 1, cid] != 1:
+            if np.argmax(character_labels[i + 1]) >= cid:
+                cid += 1
                 sentence_term.append(1)
-                sentence_term = np.asarray(sentence_term)
+            else:
+                sentence_term.append(0)
+        else:
+            sentence_term.append(0)
+    sentence_term.append(1)
+    sentence_term = np.asarray(sentence_term)
 
-                assert (len(sentence_term) == len(character_labels))
+    assert (len(sentence_term) == len(character_labels))
 
-                word_level_raw_stroke = []
-                word_level_stroke_in = []
-                word_level_stroke_out = []
-                word_level_char = []
-                word_level_term = []
+    word_level_raw_stroke = []
+    word_level_stroke_in = []
+    word_level_stroke_out = []
+    word_level_char = []
+    word_level_term = []
 
-                segment_level_raw_stroke = []
-                segment_level_stroke_in = []
-                segment_level_stroke_out = []
-                segment_level_char = []
-                segment_level_term = []
+    segment_level_raw_stroke = []
+    segment_level_stroke_in = []
+    segment_level_stroke_out = []
+    segment_level_char = []
+    segment_level_term = []
 
-                character_level_raw_stroke = []
-                character_level_stroke_in = []
-                character_level_stroke_out = []
-                character_level_char = []
-                character_level_term = []
+    character_level_raw_stroke = []
+    character_level_stroke_in = []
+    character_level_stroke_out = []
+    character_level_char = []
+    character_level_term = []
 
-                word_start_id = 0
+    word_start_id = 0
 
-                for i, c in enumerate(sentence_text):
-                    if c != ' ':
-                        character_raw_points = raw_points[character_labels[:, i] > 0]
-                        character_raw_points[:, 0] -= character_raw_points[0, 0]
-                        character_level_raw_stroke.append(character_raw_points)
-                        character_stroke_in, character_stroke_out = reformat_raw_data(character_raw_points, pred_start=pred_start)
-                        character_level_stroke_in.append(character_stroke_in)
-                        character_level_stroke_out.append(character_stroke_out)
-                        term = np.zeros([len(character_raw_points)])
-                        term[-1] = 1
-                        character_level_term.append(term)
-                        character_level_char.append([CHARACTERS.find(c)])
+    for i, c in enumerate(sentence_text):
+        if c != ' ':
+            character_raw_points = raw_points[character_labels[:, i] > 0]
+            if character_raw_points.shape[0] == 0:
+                print(f"Warning: No points found for character {c} at index {i}")
+                continue
+            character_raw_points[:, 0] -= character_raw_points[0, 0]
+            character_level_raw_stroke.append(character_raw_points)
+            character_stroke_in, character_stroke_out = reformat_raw_data(character_raw_points, pred_start=pred_start)
+            character_level_stroke_in.append(character_stroke_in)
+            character_level_stroke_out.append(character_stroke_out)
+            term = np.zeros([len(character_raw_points)])
+            term[-1] = 1
+            character_level_term.append(term)
+            # Create character_char array with the same length as character_raw_points
+            # Each element contains the index of the character in CHARACTERS
+            character_char = np.ones(len(character_raw_points), dtype=int) * CHARACTERS.find(c)
+            character_level_char.append(character_char)
 
-                    if i in split_char_ids:
-                        word = sentence_text[word_start_id:i]
-                        word_labels = np.zeros(len(character_labels))
-                        for j in range(word_start_id, i):
-                            word_labels += character_labels[:, j]
-                        word_raw_points = raw_points[word_labels > 0]
-                        word_term = sentence_term[word_labels > 0]
-                        word_term[0] = 0
-                        assert (np.sum(word_term) == len(word))
-                        word_raw_points[:, 0] -= word_raw_points[0, 0]
-                        word_level_raw_stroke.append(word_raw_points)
-                        word_stroke_in, word_stroke_out = reformat_raw_data(word_raw_points, pred_start=pred_start)
-                        word_level_stroke_in.append(word_stroke_in)
-                        word_level_stroke_out.append(word_stroke_out)
-                        word_level_term.append(word_term)
-                        word_level_char.append([CHARACTERS.find(c) for c in word])
-                        word_start_id = i + 1
+        if i in split_char_ids:
+            word = sentence_text[word_start_id:i]
+            word_labels = np.zeros(len(character_labels))
+            for j in range(word_start_id, i):
+                word_labels += character_labels[:, j]
+            word_raw_points = raw_points[word_labels > 0]
+            word_term = sentence_term[word_labels > 0]
+            word_term[0] = 0
+            assert (np.sum(word_term) == len(word))
+            word_raw_points[:, 0] -= word_raw_points[0, 0]
+            word_level_raw_stroke.append(np.asarray(word_raw_points))
+            word_stroke_in, word_stroke_out = reformat_raw_data(word_raw_points, pred_start=pred_start)
+            word_level_stroke_in.append(word_stroke_in)
+            word_level_stroke_out.append(word_stroke_out)
+            word_level_term.append(word_term)
+            # Create word_char array with character indices for each point in word_raw_points
+            word_char = np.zeros(len(word_raw_points), dtype=int)
+            char_index = 0
+            for i in range(len(word_term)):
+                char_index_value = CHARACTERS.find(word[char_index])
+                word_char[i] = char_index_value
+                if word_term[i] == 1:  # If this is the end of a character
+                    char_index += 1
 
-                        assert (len(character_level_raw_stroke) == len(word))
+            word_level_char.append(word_char)
+            word_start_id = i + 1
 
-                        segment_level_raw_stroke.append(character_level_raw_stroke)
-                        segment_level_stroke_in.append(character_level_stroke_in)
-                        segment_level_stroke_out.append(character_level_stroke_out)
-                        segment_level_char.append(character_level_char)
-                        segment_level_term.append(character_level_term)
-                        character_level_raw_stroke = []
-                        character_level_stroke_in = []
-                        character_level_stroke_out = []
-                        character_level_char = []
-                        character_level_term = []
+            assert (len(character_level_raw_stroke) == len(word))
 
-                word = sentence_text[word_start_id:]
-                word_labels = np.zeros(len(character_labels))
-                for j in range(word_start_id, len(sentence_text)):
-                    word_labels += character_labels[:, j]
-                word_raw_points = raw_points[word_labels > 0]
-                word_raw_points[:, 0] -= word_raw_points[0, 0]
-                word_term = sentence_term[word_labels > 0]
-                word_term[0] = 0
-                assert (np.sum(word_term) == len(word))
-                word_level_raw_stroke.append(word_raw_points)
-                word_stroke_in, word_stroke_out = reformat_raw_data(word_raw_points, pred_start=pred_start)
-                word_level_stroke_in.append(word_stroke_in)
-                word_level_stroke_out.append(word_stroke_out)
-                word_level_term.append(word_term)
-                word_level_char.append([CHARACTERS.find(c) for c in word])
-                assert (len(character_level_raw_stroke) == len(word))
-                segment_level_raw_stroke.append(character_level_raw_stroke)
-                segment_level_stroke_in.append(character_level_stroke_in)
-                segment_level_stroke_out.append(character_level_stroke_out)
-                segment_level_char.append(character_level_char)
-                segment_level_term.append(character_level_term)
+            segment_level_raw_stroke.append(character_level_raw_stroke)
+            segment_level_stroke_in.append(character_level_stroke_in)
+            segment_level_stroke_out.append(character_level_stroke_out)
+            segment_level_char.append(character_level_char)
+            segment_level_term.append(character_level_term)
+            character_level_raw_stroke = []
+            character_level_stroke_in = []
+            character_level_stroke_out = []
+            character_level_char = []
+            character_level_term = []
 
-                if not os.path.exists(f'{data_dir}/{preprocess_dir}/{writer_id}'):
-                    os.mkdir(f'{data_dir}/{preprocess_dir}/{writer_id}')
+    word = sentence_text[word_start_id:]
+    word_labels = np.zeros(len(character_labels))
+    for j in range(word_start_id, len(sentence_text)):
+        word_labels += character_labels[:, j]
+    word_raw_points = raw_points[word_labels > 0]
+    word_raw_points[:, 0] -= word_raw_points[0, 0]
+    word_term = sentence_term[word_labels > 0]
+    word_term[0] = 0
+    assert (np.sum(word_term) == len(word))
+    word_level_raw_stroke.append(word_raw_points)
+    word_stroke_in, word_stroke_out = reformat_raw_data(word_raw_points, pred_start=pred_start)
+    word_level_stroke_in.append(word_stroke_in)
+    word_level_stroke_out.append(word_stroke_out)
+    word_level_term.append(word_term)
+    word_level_char.append([CHARACTERS.find(c) for c in word])
+    assert (len(character_level_raw_stroke) == len(word))
+    segment_level_raw_stroke.append(character_level_raw_stroke)
+    segment_level_stroke_in.append(character_level_stroke_in)
+    segment_level_stroke_out.append(character_level_stroke_out)
+    segment_level_char.append(character_level_char)
+    segment_level_term.append(character_level_term)
 
-                with open(f'{data_dir}/{preprocess_dir}/{writer_id}/{sentence_id}', 'wb') as f:
-                    pickle.dump([
-                        sentence_stroke_in, sentence_stroke_out, sentence_term, sentence_char,
-                        word_level_stroke_in, word_level_stroke_out, word_level_term, word_level_char,
-                        segment_level_stroke_in, segment_level_stroke_out, segment_level_term, segment_level_char], f)
+    if not os.path.exists(f'{data_dir}/{preprocess_dir}/{writer_id}'):
+        os.mkdir(f'{data_dir}/{preprocess_dir}/{writer_id}')
 
+    with open(f'{data_dir}/{preprocess_dir}/{writer_id}/{sentence_id}.npy', 'wb') as f:
+        # Save as .npy file instead of using pickle
+        # Create the array with all data
+        data_array = np.array([
+            sentence_raw_points,
+            sentence_stroke_in, 
+            sentence_stroke_out, 
+            sentence_term,
+            sentence_level_char,
+            word_level_raw_stroke, 
+            word_level_stroke_in,
+            word_level_stroke_out,
+            word_level_term,
+            word_level_char,
+            segment_level_raw_stroke,
+            segment_level_stroke_in, 
+            segment_level_stroke_out, 
+            segment_level_term, 
+            segment_level_char, 
+            {}
+        ], dtype=object)
+        
+        # Save using numpy's save function to preserve array structure
+        np.save(f, data_array, allow_pickle=True)
 
 def gaussian_2d(x1, x2, mu1, mu2, s1, s2, rho):
     norm1 = x1 - mu1

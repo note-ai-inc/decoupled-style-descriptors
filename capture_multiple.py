@@ -124,7 +124,7 @@ class HandwritingCapture:
                     character_mapping[point_index, current_char_index] = 1
                 
                 # If pen is up (pen_state = 1), move to the next character
-                if pen_state == 1 and i > 0 and current_char_index < len(text):
+                if (text[current_char_index] == ' ' or pen_state == 1) and i > 0 and current_char_index < len(text):
                     current_char_index += 1
                 
                 point_index += 1

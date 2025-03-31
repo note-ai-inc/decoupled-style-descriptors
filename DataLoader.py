@@ -96,6 +96,53 @@ class DataLoader():
 					[sentence_level_raw_stroke, sentence_level_stroke_in, sentence_level_stroke_out, sentence_level_term, sentence_level_char, word_level_raw_stroke, word_level_stroke_in, word_level_stroke_out, word_level_term, word_level_char, segment_level_raw_stroke, segment_level_stroke_in, segment_level_stroke_out, segment_level_term, segment_level_char, _] = \
 						np.load(self.datadir+'/'+str(uid)+'/'+str(tid)+'.npy', allow_pickle=True, encoding='bytes')
 
+				# Log shapes and lengths of all data structures
+				print(f"\n--- Data Structure Information for uid={uid}, tid={tid} ---")
+				
+				# Sentence level data
+				print(f"Sentence Level Raw Stroke: Shape={sentence_level_raw_stroke.shape if hasattr(sentence_level_raw_stroke, 'shape') else len(sentence_level_raw_stroke)}")
+				print(f"Sentence Level Stroke In: Shape={sentence_level_stroke_in.shape if hasattr(sentence_level_stroke_in, 'shape') else len(sentence_level_stroke_in)}")
+				print(f"Sentence Level Stroke Out: Shape={sentence_level_stroke_out.shape if hasattr(sentence_level_stroke_out, 'shape') else len(sentence_level_stroke_out)}")
+				print(f"Sentence Level Term: Shape={sentence_level_term.shape if hasattr(sentence_level_term, 'shape') else len(sentence_level_term)}")
+				print(f"Sentence Level Char: Shape={sentence_level_char.shape if hasattr(sentence_level_char, 'shape') else len(sentence_level_char)}")
+				
+				# Word level data
+				print(f"Word Level Raw Stroke: Length={len(word_level_raw_stroke)}")
+				print(f"Word Level Stroke In: Length={len(word_level_stroke_in)}")
+				print(f"Word Level Stroke Out: Length={len(word_level_stroke_out)}")
+				print(f"Word Level Term: Length={len(word_level_term)}")
+				if len(word_level_term) > 0:
+					print(f"  - First Word Term Shape: {word_level_term[0].shape if hasattr(word_level_term[0], 'shape') else len(word_level_term[0])}")
+					print(f"  - First Word Term Sample: {word_level_term[0][:5] if len(word_level_term[0]) > 5 else word_level_term[0]}")
+				
+				print(f"Word Level Char: Length={len(word_level_char)}")
+				if len(word_level_char) > 0:
+					print(f"  - First Word Char Shape: {word_level_char[0].shape if hasattr(word_level_char[0], 'shape') else len(word_level_char[0])}")
+					print(f"  - First Word Char Sample: {word_level_char[0][:5] if len(word_level_char[0]) > 5 else word_level_char[0]}")
+				
+				# Segment level data
+				print(f"Segment Level Raw Stroke: Length={len(segment_level_raw_stroke)}")
+				print(f"Segment Level Stroke In: Length={len(segment_level_stroke_in)}")
+				print(f"Segment Level Stroke Out: Length={len(segment_level_stroke_out)}")
+				print(f"Segment Level Term: Length={len(segment_level_term)}")
+				if len(segment_level_term) > 0:
+					print(f"  - First Segment Term Shape: {segment_level_term[0].shape if hasattr(segment_level_term[0], 'shape') else len(segment_level_term[0])}")
+					print(f"  - First Segment Term Sample: {segment_level_term[0][:5] if len(segment_level_term[0]) > 5 else segment_level_term[0]}")
+				
+				print(f"Segment Level Char: Length={len(segment_level_char)}")
+				if len(segment_level_char) > 0:
+					print(f"  - First Segment Char Shape: {segment_level_char[0].shape if hasattr(segment_level_char[0], 'shape') else len(segment_level_char[0])}")
+					print(f"  - First Segment Char Sample: {segment_level_char[0][:5] if len(segment_level_char[0]) > 5 else segment_level_char[0]}")
+				
+				# Sample first elements to check structure
+				if len(word_level_stroke_in) > 0:
+					print(f"First Word Stroke In Shape: {word_level_stroke_in[0].shape if hasattr(word_level_stroke_in[0], 'shape') else len(word_level_stroke_in[0])}")
+				
+				if len(segment_level_stroke_in) > 0 and len(segment_level_stroke_in[0]) > 0:
+					print(f"First Segment First Stroke In Shape: {segment_level_stroke_in[0][0].shape if hasattr(segment_level_stroke_in[0][0], 'shape') else len(segment_level_stroke_in[0][0])}")
+				
+				print("--- End of Data Structure Information ---\n")
+
 				if self.datadir == './data/DW_writers':
 					sentence_level_char	= sentence_level_char[1:]
 					sentence_level_term	= sentence_level_term[1:]
@@ -103,9 +150,9 @@ class DataLoader():
 				if self.datadir == './data/VALID_DW_writers':
 					sentence_level_char	= sentence_level_char[1:]
 					sentence_level_term	= sentence_level_term[1:]
-				print(f"segment_level_term  Shape: {segment_level_term.shape if hasattr(segment_level_term, 'shape') else len(segment_level_term)}")
-				print(f"Values: {segment_level_term}")
-				print(f"Character: {segment_level_char}")
+				# print(f"segment_level_term  Shape: {segment_level_term.shape if hasattr(segment_level_term, 'shape') else len(segment_level_term)}")
+				# print(f"Values: {segment_level_term}")
+				# print(f"Character: {segment_level_char}")
 				
 				while True:
 					if len(sentence_level_term) == 0:
@@ -122,6 +169,8 @@ class DataLoader():
 				tmp = []
 				for i, t in enumerate(sentence_level_term):
 					if t == 1:
+						if(i>len(sentence_level_char)):
+							print(f"sentence_level_char length: {len(sentence_level_char)}, sentence_level_term length: {len(sentence_level_term)}, i: {i}")
 						tmp.append(sentence_level_char[i])
 
 				a = np.ones_like(sentence_level_stroke_in)
@@ -166,6 +215,8 @@ class DataLoader():
 					tmp = []
 					for i, t in enumerate(each_word_level_term):
 						if t == 1:
+							if(i>len(each_word_level_char)):
+								print(f"each_word_level_char length: {len(each_word_level_char)}, each_word_level_term length: {len(each_word_level_term)}, i: {i}")
 							tmp.append(each_word_level_char[i])
 
 					b = np.ones_like(each_word_level_stroke_in)
@@ -217,6 +268,8 @@ class DataLoader():
 						tmp = []
 						for i, t in enumerate(each_segment_level_term):
 							if t == 1:
+								if(i>len(each_segment_level_char)):
+									print(f"each_segment_level_char length: {len(each_segment_level_char)}, each_segment_level_term length: {len(each_segment_level_term)}, i: {i}")
 								tmp.append(each_segment_level_char[i])
 
 						c = np.ones_like(each_segment_level_stroke_in)
