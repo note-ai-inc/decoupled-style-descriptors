@@ -21,7 +21,7 @@ def process_json_file(json_path, writer_id, sample_id, resample):
     # Extract data
     text = data['text']
     strokes = data['strokes']
-    character_labels = data['character_labels']
+    character_labels = np.asarray(data['character_labels'])  # Convert to numpy array
     preprocess_dir = 'writers'
     data_dir = './data'
     
@@ -52,19 +52,21 @@ def main():
         raise ValueError(f"Input directory {args.input_dir} does not exist")
     
     print(f"Processing handwriting data from {args.input_dir}")
-    print(f"Resampling to {args.resample} points per stroke")
     print(f"Using pred_start={args.pred_start}")
     
     # Process each JSON file
-    json_files = [f for f in os.listdir(args.input_dir) if f.endswith('.json')]
-    for i, json_file in enumerate(json_files):
-        json_path = os.path.join(args.input_dir, json_file)
-        print(f"Processing {json_file}...")
-        
-        # Process file and save in expected format
-        output_path = process_json_file(json_path, writer_id=args.writer_id, sample_id=i, resample=args.resample)
-        print(f"Saved to {output_path}")
-    
+    # Check if there are any JSON files in the directory
+    print(f"Processing {args.input_dir}")
+    json_files = sorted([f for f in os.listdir(args.input_dir) if f.endswith('.json')])
+    if not json_files:
+        print(f"No JSON files found in {args.input_dir}")
+    else:
+        for i, json_file in enumerate(json_files):
+            json_path = os.path.join(args.input_dir, json_file)
+            print(f"Processing {json_file}...")
+            
+            # Process file and save in expected format
+            process_json_file(json_path, writer_id=args.writer_id, sample_id=i, resample=args.resample)
     print("Processing complete!")
 
 if __name__ == '__main__':

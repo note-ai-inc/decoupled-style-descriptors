@@ -43,6 +43,7 @@ def preprocess_dataset(data_dir, resample=20, pred_start=1):
                 process_dataset(data_dir, writer_id, sentence_id, sentence_text, raw_points, character_labels, preprocess_dir, pred_start)
 
 def process_dataset(data_dir, writer_id, sentence_id, sentence_text, raw_points, character_labels, preprocess_dir, pred_start=1):
+    print(f"Processing dataset for writer_id: {writer_id}, sentence_id: {sentence_id}")
     sentence_raw_points = raw_points
     sentence_raw_points[:, 0] -= sentence_raw_points[0, 0]
     sentence_stroke_in, sentence_stroke_out = reformat_raw_data(sentence_raw_points, pred_start=pred_start)
@@ -98,6 +99,8 @@ def process_dataset(data_dir, writer_id, sentence_id, sentence_text, raw_points,
     character_level_term = []
 
     word_start_id = 0
+    char_start_id = 0
+    point_start_id = 0
 
     for i, c in enumerate(sentence_text):
         if c != ' ':
@@ -105,7 +108,6 @@ def process_dataset(data_dir, writer_id, sentence_id, sentence_text, raw_points,
             if character_raw_points.shape[0] == 0:
                 print(f"Warning: No points found for character {c} at index {i}")
                 continue
-            character_raw_points[:, 0] -= character_raw_points[0, 0]
             character_level_raw_stroke.append(character_raw_points)
             character_stroke_in, character_stroke_out = reformat_raw_data(character_raw_points, pred_start=pred_start)
             character_level_stroke_in.append(character_stroke_in)
@@ -117,17 +119,24 @@ def process_dataset(data_dir, writer_id, sentence_id, sentence_text, raw_points,
             # Each element contains the index of the character in CHARACTERS
             character_char = np.ones(len(character_raw_points), dtype=int) * CHARACTERS.find(c)
             character_level_char.append(character_char)
+            # point_start_id += len(character_raw_points)
+            # char_start_id += 1
+            print(f"char {c} index {i} total {len(raw_points)} charpoints {len(character_raw_points)} term: {term.shape} character_char: {character_char.shape}")
 
         if i in split_char_ids:
             word = sentence_text[word_start_id:i]
+
             word_labels = np.zeros(len(character_labels))
             for j in range(word_start_id, i):
                 word_labels += character_labels[:, j]
+
+            print(f"word_labels for {word}: {word_labels}")
             word_raw_points = raw_points[word_labels > 0]
-            word_term = sentence_term[word_labels > 0]
-            word_term[0] = 0
-            assert (np.sum(word_term) == len(word))
-            word_raw_points[:, 0] -= word_raw_points[0, 0]
+            word_term = np.zeros(len(word_raw_points))
+            
+            # word_term = sentence_term[word_labels > 0]
+            word_term[:-1] = 1
+        
             word_level_raw_stroke.append(np.asarray(word_raw_points))
             word_stroke_in, word_stroke_out = reformat_raw_data(word_raw_points, pred_start=pred_start)
             word_level_stroke_in.append(word_stroke_in)
@@ -136,16 +145,19 @@ def process_dataset(data_dir, writer_id, sentence_id, sentence_text, raw_points,
             # Create word_char array with character indices for each point in word_raw_points
             word_char = np.zeros(len(word_raw_points), dtype=int)
             char_index = 0
-            for i in range(len(word_term)):
+            for j in range(len(word_term)):
+                if(char_idx>len(word)):
+                    print(f"Warning: char_idx {char_idx} is greater than word {word} j: {j} word_term: {word_term.shape}")
+                    break
                 char_index_value = CHARACTERS.find(word[char_index])
-                word_char[i] = char_index_value
-                if word_term[i] == 1:  # If this is the end of a character
+                word_char[j] = char_index_value
+                if word_term[j] == 1:  # If this is the end of a character
                     char_index += 1
 
             word_level_char.append(word_char)
-            word_start_id = i + 1
+            word_start_id=i+1
 
-            assert (len(character_level_raw_stroke) == len(word))
+            print(f"word_char for {word}: {word_char.shape} word_term: {word_term.shape} word_raw_points: {len(word_raw_points)}")
 
             segment_level_raw_stroke.append(character_level_raw_stroke)
             segment_level_stroke_in.append(character_level_stroke_in)
@@ -163,6 +175,8 @@ def process_dataset(data_dir, writer_id, sentence_id, sentence_text, raw_points,
     for j in range(word_start_id, len(sentence_text)):
         word_labels += character_labels[:, j]
     word_raw_points = raw_points[word_labels > 0]
+    if word_raw_points.shape[0] == 0:
+        print(f"Warning: No points found for word {word} at index {word_start_id} sentence {sentence_text} word_labels {word_labels}")
     word_raw_points[:, 0] -= word_raw_points[0, 0]
     word_term = sentence_term[word_labels > 0]
     word_term[0] = 0

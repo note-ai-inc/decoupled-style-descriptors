@@ -216,7 +216,8 @@ class DataLoader():
 					for i, t in enumerate(each_word_level_term):
 						if t == 1:
 							if(i>len(each_word_level_char)):
-								print(f"each_word_level_char length: {len(each_word_level_char)}, each_word_level_term length: {len(each_word_level_term)}, i: {i}")
+								print(f"wid {wid} each_word_level_char length: {len(each_word_level_char)}, each_word_level_term length: {len(each_word_level_term)}, i: {i}")
+								continue
 							tmp.append(each_word_level_char[i])
 
 					b = np.ones_like(each_word_level_stroke_in)

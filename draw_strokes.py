@@ -11,6 +11,7 @@ def draw_strokes(stroke_data, output_path, width=750, height=160):
         output_path: path to save the output image
         width: width of the output image
         height: height of the output image
+        level: visualization level ('s': sentence, 'w': word, 'c': char)
     """
     # Convert list to numpy array if needed
     if isinstance(stroke_data, list):
@@ -90,23 +91,33 @@ def draw_strokes(stroke_data, output_path, width=750, height=160):
             dot_radius = 2  # Increased dot radius
             draw.ellipse([(x-dot_radius, y-dot_radius), (x+dot_radius, y+dot_radius)], fill='black')
     
+    
     # Save the image
     img.save(output_path)
     print(f"Saved visualization to {output_path}")
 
-def visualize_handwriting(npy_path, output_path):
+def visualize_handwriting(npy_path, output_path, level='s'):
     """
     Load handwriting data from .npy file and visualize it.
     
     Args:
         npy_path: path to the .npy file
         output_path: path to save the output image
+        level: visualization level ('s': sentence, 'w': word, 'c': char)
     """
     # Load the data
     data = np.load(npy_path, allow_pickle=True)
     
     # Extract stroke data (first element contains sentence-level raw stroke data)
-    stroke_data = data[0]
+    if(level == 's'):
+        stroke_data = data[0]
+    elif(level == 'w'):
+        stroke_data = data[5][0]
+    elif(level == 'c'):
+        # Flatten the 2D array of segment-level strokes
+        segment_strokes = data[10][0][0:3]
+        stroke_data = np.vstack(segment_strokes)
+        print(f"char Stroke data: {stroke_data}")
     
     # Draw the strokes
     draw_strokes(stroke_data, output_path)
@@ -117,7 +128,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Visualize handwriting strokes from .npy files')
     parser.add_argument('--input', type=str, required=True, help='Path to the .npy file')
     parser.add_argument('--output', type=str, required=True, help='Path to save the output image')
+    parser.add_argument('--level', type=str, default='s', choices=['s', 'w', 'c'],
+                      help='Visualization level (s: sentence, w: word, c: char)')
     
     args = parser.parse_args()
     
-    visualize_handwriting(args.input, args.output) 
+    visualize_handwriting(args.input, args.output, level=args.level) 
