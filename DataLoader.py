@@ -103,7 +103,10 @@ class DataLoader():
 				if self.datadir == './data/VALID_DW_writers':
 					sentence_level_char	= sentence_level_char[1:]
 					sentence_level_term	= sentence_level_term[1:]
-
+				print(f"segment_level_term  Shape: {segment_level_term.shape if hasattr(segment_level_term, 'shape') else len(segment_level_term)}")
+				print(f"Values: {segment_level_term}")
+				print(f"Character: {segment_level_char}")
+				
 				while True:
 					if len(sentence_level_term) == 0:
 						break
@@ -196,6 +199,8 @@ class DataLoader():
 						else:
 							each_segment_level_term			= segment_level_term[wid][sid]
 							each_segment_level_char			= segment_level_char[wid][sid]
+						# Log segment level term for debugging
+
 
 						while True:
 							if len(each_segment_level_term) == 0:

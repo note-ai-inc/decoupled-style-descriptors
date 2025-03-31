@@ -165,7 +165,7 @@ def main(params):
 						word_Wc_rec_TYPE_D.append(TYPE_D_out[-1])
 					TYPE_D_REF.append(all_W_c[segment_batch_id][-1])
 			WC_	= torch.stack(word_Wc_rec_TYPE_D)
-			tmp_commands, res = net.sample_from_w_fix(WC_, target_word)
+			tmp_commands, res = net.sample_from_w_fix(WC_)
 			current_id = current_id + res
 			if len(all_commands) == 0:
 				all_commands.append(tmp_commands)
@@ -173,8 +173,6 @@ def main(params):
 				all_commands.append(tmp_commands[1:])
 			if res < 0 or current_id >= len(target_word):
 				break
-
-		# tmp_commands = net.sample_from_w_fix(torch.stack(tmp_WC), _, target_word)
 
 		commands = []
 		px, py = 0, 100
@@ -205,8 +203,8 @@ def main(params):
 				px, py = x, y
 			width += np.max(all_commands[:, 0]) + 25
 
-		# im.convert("RGB").save(f'results/{target_word}.png')
-		im.convert("RGB").save(f'results/hello.png')
+		im.convert("RGB").save(f'results/{target_word}.png')
+		# im.convert("RGB").save(f'results/hello.png')
 
 	def sample_word2(target_word):
 		available_segments = {}
@@ -317,12 +315,21 @@ def main(params):
 			else:
 				sample2(target_word)
 
-if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description='Arguments for generating samples with the handwriting synthesis model.')
-
-	parser.add_argument('--writer_id', type=int, default=80)
-	parser.add_argument('--num_samples', type=int, default=10)
-	parser.add_argument('--generating_default', type=int, default=0)
+if __name__ == "__main__":
+	parser = argparse.ArgumentParser(description='Generate handwriting samples')
+	parser.add_argument('--writer_id', type=int, required=True, help='ID of the writer to use')
+	parser.add_argument('--num_samples', type=int, default=10, help='Number of samples to use')
+	parser.add_argument('--generating_default', type=int, default=1, help='Whether to generate default samples')
 	parser.add_argument('--direct_use', type=int, default=0)
-	main(parser.parse_args())
+	parser.add_argument('--text', type=str, default='Hello world', help='Text to generate')
+	
+	args = parser.parse_args()
+	
+	# Initialize everything
+	main(args)
+	
+	# Generate the handwriting
+	target_word = args.text
+	print(f"Generating handwriting for: {target_word}")
+	sample(target_word)
 

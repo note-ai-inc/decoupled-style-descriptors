@@ -99,11 +99,39 @@ class HandwritingCapture:
         filepath = os.path.join(self.raw_strokes_dir, filename)
         
         data = {
-            'strokes': self.strokes,
             'text': text,
-            'timestamp': timestamp
+            'timestamp': timestamp,
+            'strokes': self.strokes,
         }
         
+        # Calculate the total number of points across all strokes
+        total_points = sum(len(stroke) for stroke in self.strokes)
+        
+        # Initialize the character mapping array
+        # Each row represents a point, each column represents a character
+        character_mapping = np.zeros((total_points, len(text)))
+        
+        point_index = 0
+        current_char_index = 0
+        
+        for stroke in self.strokes:
+            for i, point in enumerate(stroke):
+                # For each point in the stroke
+                x, y, pen_state = point
+                
+                # Map this point to the current character
+                if current_char_index < len(text):
+                    character_mapping[point_index, current_char_index] = 1
+                
+                # If pen is up (pen_state = 1), move to the next character
+                if pen_state == 1 and i > 0 and current_char_index < len(text):
+                    current_char_index += 1
+                
+                point_index += 1
+        
+        # Add the character mapping to the data
+        data['character_labels'] = character_mapping.tolist()
+
         with open(filepath, 'w') as f:
             json.dump(data, f)
         
