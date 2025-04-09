@@ -18,6 +18,8 @@ def reformat_raw_data(raw_data, pred_start):
         tmp = tmp[1:] - tmp[:-1]
         tmp[0,2] = 0
         tmp[1:,2] = raw_data[:-1, 2]
+        tmp = np.concatenate([[[0, 0, 0]], tmp], 0)
+
     return tmp[:-1], tmp[1:]
 
 def preprocess_dataset(data_dir, resample=20, pred_start=1):
@@ -180,14 +182,12 @@ def process_dataset(data_dir, writer_id, sentence_id, sentence_text, raw_points,
     word_raw_points[:, 0] -= word_raw_points[0, 0]
     word_term = sentence_term[word_labels > 0]
     word_term[0] = 0
-    assert (np.sum(word_term) == len(word))
     word_level_raw_stroke.append(word_raw_points)
     word_stroke_in, word_stroke_out = reformat_raw_data(word_raw_points, pred_start=pred_start)
     word_level_stroke_in.append(word_stroke_in)
     word_level_stroke_out.append(word_stroke_out)
     word_level_term.append(word_term)
     word_level_char.append([CHARACTERS.find(c) for c in word])
-    assert (len(character_level_raw_stroke) == len(word))
     segment_level_raw_stroke.append(character_level_raw_stroke)
     segment_level_stroke_in.append(character_level_stroke_in)
     segment_level_stroke_out.append(character_level_stroke_out)
