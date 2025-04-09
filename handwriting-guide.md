@@ -16,20 +16,17 @@ pip install -r requirements.txt
 
 ## Step 1: Prepare Input Files
 
-1. Place your handwriting images in the `inputs` directory:
-   - Name format: `bruce0.png`, `bruce1.png`, etc.
-   - Ensure images are clear and well-lit
-   - Use black text on white background
+1. Capture handwriting data using `capture_multiple`:
+```bash
+python3 capture_multiple.py
+```
+   - This will save data in a specific format that can be converted using `convert_handwritingv1.py` under data/raw_samples
+   - When writing characters, ensure each character is written with exactly one stroke
+   - We don't have a good way to capture character-level data with multiple strokes
+   - Follow the on-screen instructions to write each character
 
-2. Create a text file (`inputs/text.txt`) with corresponding text:
-   - One line per image
-   - Text should match exactly what's written in the images
-   - Example:
-     ```
-     The quick fox jumps over the fence
-     Hello world
-     This is a test
-     ```
+2. Run `python convert_handwritingv1.py --input data/raw_samples --writer_id your_id`, this will convert your sample data to npy files and Place your handwriting images in the writer/your_id
+
 
 ## Step 2: Convert Handwriting Images to Data
 
@@ -39,22 +36,11 @@ rm -rf data/writers/200/* results/*
 ```
 
 2. Convert all handwriting samples:
-```bash
-for i in {0..9}; do
-    python3 convert_handwriting.py \
-        --input inputs/bruce$i.png \
-        --text "$(sed -n "$((i+1))p" inputs/text.txt)" \
-        --writer_id 200 \
-        --sample_id $i
-done
 ```
-
-This will:
-- Process each image
-- Extract stroke data
-- Normalize coordinates
-- Create character mappings
-- Save data as .npy files in `data/writers/200/`
+    python3 convert_handwritingv1.py \
+        --input data/raw_samples \
+        --writer_id 200 \
+```
 
 ## Step 3: Generate Text Outputs
 
